@@ -1,4 +1,3 @@
-#check gitkraken board
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
@@ -47,19 +46,21 @@ def add_counter_label(frame):
     frame = frame.assign(ID=np.arange(0, frame_len))
     return frame
 
+
 """ STAGE 2 - MIN <-> MAX [[min,max],[min,max]....,[min,max]] """
 
 df_smalltrain = pd.read_csv("CsvFiles/SmallTrain.csv")
 df_smalltrain = edit_frame(df_smalltrain)
 grouped = df_smalltrain.groupby('num_class')
-normal = grouped.get_group(1)
+normal = grouped.get_group(1) # normal
 
 normal_max_list = list(normal.max())
 normal_min_list = list(normal.min())
 min_max = map(list, zip(normal_min_list, normal_max_list))
 print("=======================================")
 print("STAGE 2")
-print(list(min_max))
+min_max = list(min_max)
+print(min_max)
 
 """ STAGE 3 - adding ID column to the test and result panda frames """
 df_stest = pd.read_csv("CsvFiles/SmallTest.csv")
@@ -78,12 +79,18 @@ Stage 4 - DPI , compare between the two lists ID and check if each field is betw
 the min and max of each attribute
 (taking anomaly from results (anomaly = 0))
 """
-df_results =df_results.groupby('Class')
-results_anomaly = df_results.get_group(0)
+# grouped_results = df_results.groupby('Class')
+# results_anomaly = grouped_results.get_group(0) # anomaly
 
 print("=======================================")
 print("STAGE 4")
-print(results_anomaly)
-
+# print(results_anomaly)
+# removes all the normals from the test file
+df_stest = df_stest[df_stest.num_class != 1]
+# print(df_stest)
+# merges the prediction with their values
+check_pd = pd.merge(df_stest, df_results, on='ID')
+print(check_pd)
+print(min_max)
 
 
