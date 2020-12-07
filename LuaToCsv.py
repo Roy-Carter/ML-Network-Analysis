@@ -17,6 +17,10 @@ class Server:
             print(key, ' : ', value)
 
     def read_lua(self):
+        """
+        Creates a dictionary of lists where the number of line is the key and the [<fieldname>,<size>] is the value
+        :return: returns True if the file was opened correctly and the dictionary was created , False otherwise.
+        """
         ret_val = False
         try:
             lua_f = open(LUA_NAME, "rb")
@@ -29,6 +33,8 @@ class Server:
                     dict_list.append(2)
                 elif size == 'uint16':
                     dict_list.append(4)
+                elif size == 'uint24':
+                    dict_list.append(6)
                 elif size == 'uint32':
                     dict_list.append(8)
                 else:
@@ -43,12 +49,20 @@ class Server:
         return ret_val
 
     def convert_attributes_list(self):
+        """
+        Creates a list for the attributes name (the protocol fields)
+        :return: the attributes list
+        """
         attr_list = []
         for i in self.protocol_fields.values():
             attr_list.append(i[0])
         return attr_list
 
     def parse_pcap(self):
+        """
+        Parsing the pcap to a csv file.
+        :return: return True if the file was parsed into csv , otherwise returns false.
+        """
         ret_val = False
         attr_list = self.convert_attributes_list()
         protocols_list = []
@@ -59,23 +73,28 @@ class Server:
                     packet_payload = pkt[Raw].load
                     protocol_description = self.check_pkt(packet_payload)
                     protocols_list.append(protocol_description)
-                    packet_payload = binascii.hexlify(packet_payload)
-                    packet_payload = packet_payload.decode()
             ret_val = True
+            frame = pd.DataFrame(protocols_list, columns=attr_list)
+            frame.to_csv("CsvFiles/Attributes.csv", index=False)
+            print(frame)
         except FileNotFoundError:
             print(FILE_OPEN_ERROR)
-        frame = pd.DataFrame(protocols_list,columns=attr_list)
-        frame.to_csv("CsvFiles/Attributes.csv", index=False)
-        print(frame)
+
         return ret_val
 
     def check_pkt(self, pkt):
+        """
+        Checks each packet of the pcap file and creates a list of its data split to fields.
+        :param pkt: a packet from the pcap file
+        :return: returns a a list with the packet data for the protocol
+        """
         pkt = binascii.hexlify(pkt)
         pkt = pkt.decode()
         offset = 0
         protocol_list = []
+        # needs to add a check for header / data
         """header for all"""
-        for i in range(len(self.protocol_fields.values())-2):
+        for i in range(len(self.protocol_fields.keys())-2):
             attribute = pkt[offset:offset + self.protocol_fields[i][1]]
             protocol_list.append(attribute)
             offset += self.protocol_fields[i][1]
