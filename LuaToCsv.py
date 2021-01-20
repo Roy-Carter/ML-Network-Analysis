@@ -7,16 +7,25 @@ LUA_NAME = "LuaFiles/descriptor.lua"
 FILE_OPEN_ERROR = "This file name does not exists"
 
 
+def print_dict(val):
+
+    for key, value in val.items():
+        print(key, ' : ', value)
+
+
 class Server:
 
     def __init__(self):
+        """
+        The constructor for the server class
+        protocol_fields - will hold a dictionary to every lua line that is parsed
+        protocol_types_fields - a dictionary where the key is the opcode and the values for each one are the attributes
+        for that specific message type (0 - is for basic header though)
+        opcode_list - list of all the opcodes of the messages types of the protocol (by the lua file)
+        """
         self.protocol_fields = {}
         self.protocol_types_fields = {}
         self.opcode_list = []
-
-    def print_dict(self, val):
-        for key, value in val.items():
-            print(key, ' : ', value)
 
     def create_msg_types(self):
         """
@@ -28,9 +37,7 @@ class Server:
         for i in range(len(self.protocol_fields)):
             opcode = self.protocol_fields[i][2]
             self.protocol_types_fields[opcode].append(self.protocol_fields[i][0])
-        self.print_dict(self.protocol_types_fields)
-
-
+        print_dict(self.protocol_types_fields)
 
     def read_lua(self):
         """
@@ -61,12 +68,11 @@ class Server:
                 dict_list.append(opcode)
                 self.protocol_fields[c_line] = dict_list
                 c_line += 1
-            self.print_dict(self.protocol_fields)
+            print_dict(self.protocol_fields)
             print("======================================")
             self.create_msg_types()
             lua_f.close()
             ret_val = True
-            #print(self.opcode_list)
         except FileNotFoundError:
             print(FILE_OPEN_ERROR)
         return ret_val
@@ -81,11 +87,16 @@ class Server:
             attr_list.append(i[0])
         return attr_list
 
-    def create_csv(self, packet_payload, protocols_list, attr_list):
-        protocol_description = self.check_pkt(packet_payload)
-        protocols_list.append(list(protocol_description.values()))
-        frame = pd.DataFrame(protocols_list, columns=attr_list)
+    def create_csv(self, packets_list, attr_list):
+        """
+        Creates and prints the csv file for the machine learning process
+        :param packets_list: holds a list of lists of each packet values parsed.
+        :param attr_list: a list of all the protocol attributes
+        :return: None.
+        """
+        frame = pd.DataFrame(packets_list, columns=attr_list)
         frame.to_csv("CsvFiles/Attributes.csv", index=False)
+        print("======================================")
         print(frame)
 
     def parse_pcap(self):
@@ -101,7 +112,9 @@ class Server:
             for pkt in pkt_list:
                 if Raw in pkt:
                     packet_payload = pkt[Raw].load
-                    self.create_csv(packet_payload, protocols_list, attr_list)
+                    protocol_description = self.check_pkt(packet_payload)
+                    protocols_list.append(list(protocol_description.values()))
+            self.create_csv(protocols_list, attr_list)
             ret_val = True
         except FileNotFoundError:
             print(FILE_OPEN_ERROR)
@@ -115,48 +128,54 @@ class Server:
         """
         basic_list = []
         for i in range(len(self.protocol_types_fields)):
-            basic_list = basic_list + self.protocol_types_fields[i]
+            # print(range(len(self.protocol_types_fields))) -- KeyError Exception 2/3 when changing opcode sometimes.
+            basic_list += self.protocol_types_fields[i]
 
         zeros = ['0' for i in range(len(self.protocol_fields))]
         basic_dict = dict(zip(basic_list, zeros))
         return basic_dict
 
-    def handle_msg_types(self, pkt, id, offset, protocol_list, dict_index, basic_dict):
-        if id in self.protocol_types_fields.keys():
-            for field_name in self.protocol_types_fields[id]:
-                val = pkt[offset:offset + self.protocol_fields[dict_index][1]]
-                basic_dict[field_name] = val
-                semi_list = [field_name, val]
-                protocol_list.append(semi_list)
-                offset += self.protocol_fields[dict_index][1]
-        return basic_dict
+    def handle_msg_types(self, pkt, val_type, offset, lua_dict_index, packet_dict):
+        """
+        This function is responsible for taking care of specific message types (which aren't header values) and
+        add them to a dictionary that represents for each packet {<field_name>:<value>,....} (updates the dictionary)
+        :param pkt: the packet that I am currently checking
+        :param val_type: the value of the first bytes of the protocol that needs to represent a message type
+        :param offset: the current offset from the start of the packet
+        :param lua_dict_index: the current index of the line from the lua dictionary that i'm checking.
+        :param packet_dict: the dict to update each packet values to.
+        :return:None
+        """
+        if val_type in self.protocol_types_fields.keys():
+            for field_name in self.protocol_types_fields[val_type]:
+                val = pkt[offset:offset + self.protocol_fields[lua_dict_index][1]]
+                packet_dict[field_name] = val
+                offset += self.protocol_fields[lua_dict_index][1]
 
     def check_pkt(self, pkt):
         """
         Checks each packet of the pcap file and creates a list of its data split to fields.
         :param pkt: a packet from the pcap file
-        :return: returns a a list with the packet data for the protocol
+        :return: returns a dictionary with the packet data for the protocol {<field_name>:<value>,....}
         """
-        basic_dict = self.initialize_proto_dict()
+        packet_dict = self.initialize_proto_dict()
         pkt = binascii.hexlify(pkt)
         pkt = pkt.decode()
         offset = 0
-        print("======================================")
-        protocol_list = []
+        flag = False
         val_type = int(pkt[offset:offset + self.protocol_fields[0][1]])
-        for i in range(len(self.protocol_fields)):
-            op_code = self.protocol_fields[i][2]
-            val = pkt[offset:offset + self.protocol_fields[i][1]]
-            if op_code != 0:
-                basic_dict = self.handle_msg_types(pkt, val_type, offset, protocol_list, i,basic_dict)
-                break
-            else:
-                p_type = self.protocol_fields[i][0]
-                basic_dict[p_type] = val
-                semi_list = [self.protocol_fields[i][0], val]
-                protocol_list.append(semi_list)
-            offset += self.protocol_fields[i][1]
-        return basic_dict
+        for index in range(len(self.protocol_fields)):
+            if not flag:
+                op_code = self.protocol_fields[index][2]
+                val = pkt[offset:offset + self.protocol_fields[index][1]]
+                if op_code != 0:
+                    self.handle_msg_types(pkt, val_type, offset, index, packet_dict)
+                    flag = True
+                else:
+                    p_type = self.protocol_fields[index][0]
+                    packet_dict[p_type] = val
+                offset += self.protocol_fields[index][1]
+        return packet_dict
 
 
 def main():
