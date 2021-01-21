@@ -8,7 +8,11 @@ FILE_OPEN_ERROR = "This file name does not exists"
 
 
 def print_dict(val):
-
+    """
+    Prints the dictionary
+    :param val: a dictionary to print
+    :return: None.
+    """
     for key, value in val.items():
         print(key, ' : ', value)
 
