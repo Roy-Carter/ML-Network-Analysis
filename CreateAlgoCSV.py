@@ -40,7 +40,7 @@ for i in range(1000):
         pass
 
 details = {"p_type": p_type_lst, "flag": flag_lst, "seq": seq_lst, "my_data_req": req_lst,
-           "my_data_res": res_lst, "check_it": check_it_lst, "class": [1 for i in range(1000)]}
+           "my_data_res": res_lst, "check_it": check_it_lst, "num_class": [1 for i in range(1000)]}
 frame = pd.DataFrame(details)
 
 #INCORRECT DATA ADDITION
@@ -51,7 +51,7 @@ req_lst = []
 res_lst = []
 check_it_lst = []
 for i in range(1000):
-    proto_type = randint(1, 10)
+    proto_type = randint(1, 2)
     flag = randint(2, 8)
     seq = randint(3, 11)
     p_type_lst.append(proto_type)
@@ -77,7 +77,7 @@ for i in range(1000):
 
 
 details1 = {"p_type": p_type_lst, "flag": flag_lst, "seq": seq_lst, "my_data_req": req_lst,
-           "my_data_res": res_lst, "check_it": check_it_lst, "class": [0 for i in range(1000)]}
+           "my_data_res": res_lst, "check_it": check_it_lst, "num_class": [0 for i in range(1000)]}
 frame1 = pd.DataFrame(details1)
 
 
@@ -85,4 +85,4 @@ df_row = pd.concat([frame, frame1])
 # shuffle the DataFrame rows
 df_row = df_row.sample(frac=1)
 print(df_row)
-df_row.to_csv("CsvFiles/AlgoTest.csv", index=False)
+df_row.to_csv("CsvFiles/AlgoSmallTest.csv", index=False)
