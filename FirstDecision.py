@@ -17,29 +17,11 @@ def test_classifier(model, test):
     :param test: the csv file we would like to check on the module
     :return: No returns , output withhin the function.
     """
-
-    num_class = encode(test['class'])
-    test['num_class'] = num_class
-
-    num_proto = encode(test['protocol_type'])
-    test['num_proto'] = num_proto
-
-    service_num = encode(test['service'])
-    test['service_num'] = service_num
-
-    flag_num = encode(test['flag'])
-    test['flag_num'] = flag_num
-
-    df_test = test[['duration', 'dst_bytes', 'wrong_fragment', 'su_attempted', 'num_root',
-                    'num_file_creations', 'num_shells', 'num_access_files', 'is_guest_login', 'srv_count',
-                    'same_srv_rate',
-                    'srv_diff_host_rate', 'dst_host_same_srv_rate', 'num_proto', 'flag_num', 'num_class']]
-
-    test = df_test.drop(['num_class', 'num_proto'], axis=1)
-
+    df_test = test
+    test = df_test.drop(['num_class', 'p_type'], axis=1)
     t_pred = model.predict(test)
     class_p, protocol_p = edit_output(t_pred)
-    check_results = pd.DataFrame({'Class': class_p, 'Protocol': protocol_p})
+    check_results = pd.DataFrame({'num_class': class_p, 'p_type': protocol_p})
     print("===============================")
     check_results.to_csv("CsvFiles/Results.csv", index=False)
 
@@ -93,35 +75,18 @@ def encode(df):
 
 def main():
     """testmod(name='testing', verbose=True)"""
-    train = pd.read_csv("CsvFiles/SmallTrain.csv")
-
-    num_class = encode(train['class'])
-    train['num_class'] = num_class
-
-    num_proto = encode(train['protocol_type'])
-    train['num_proto'] = num_proto
-
-    service_num = encode(train['service'])
-    train['service_num'] = service_num
-
-    flag_num = encode(train['flag'])
-    train['flag_num'] = flag_num
-
-    df_working = train[['duration', 'dst_bytes', 'wrong_fragment', 'su_attempted', 'num_root',
-                     'num_file_creations', 'num_shells', 'num_access_files', 'is_guest_login',
-                     'srv_count', 'same_srv_rate', 'srv_diff_host_rate', 'dst_host_same_srv_rate',
-                     'num_proto', 'flag_num', 'num_class']]
-
+    train = pd.read_csv("CsvFiles/AlgoTest.csv")
+    df_working = train
 
     # y1 is my main target , multi label classification
-    y1 = df_working[['num_class', 'num_proto']]
+    y1 = df_working[['num_class', 'p_type']]
     # this is a single target for plotting purpose
     y = df_working[['num_class']]
     """
     dropping my two targets
     #axis = 0 for rows , axis = 1 for columns
     """
-    X = df_working.drop(['num_class', 'num_proto'], axis=1)
+    X = df_working.drop(['num_class', 'p_type'], axis=1)
     print("model description")
     print(X.describe())
 
@@ -158,7 +123,7 @@ def main():
     print("Training Accuracy Using Multi label:")
     print(algorithm_output)
 
-    test = pd.read_csv("CsvFiles/SmallTest.csv")
+    test = pd.read_csv("CsvFiles/AlgoSmallTest.csv")
     test_classifier(model, test)
 
 
