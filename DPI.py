@@ -1,19 +1,6 @@
-# test file
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
-
-
-def encode(df):
-    """
-    A function to encode every column I need so it will be a computer readable value (numbers).
-    :param df:the current data frame we are looking at
-    :return: an array of the category listed in its continuous values
-    """
-    encoder = LabelEncoder()
-    target = encoder.fit_transform(df)
-    return np.array(target)
-
+import sys
 
 def add_counter_label(frame):
     """
@@ -27,6 +14,7 @@ def add_counter_label(frame):
 
 
 class ResultsDPI:
+    """Class that represents the DPI checks"""
 
     def __init__(self):
         self.df_smalltrain = pd.read_csv("CsvFiles/AlgoTest.csv")
@@ -53,8 +41,7 @@ class ResultsDPI:
         self.df_results = add_counter_label(self.df_results)
         print("=======================================")
         print("STAGE 3")
-        print(self.df_stest)
-        print(self.df_results)
+        print(f"{self.df_stest} \n {self.df_results} ")
 
     def stage4(self):
         """
@@ -69,10 +56,12 @@ class ResultsDPI:
         check_pd = pd.merge(self.df_stest, self.df_results, on='ID')
         check_pd_fix = check_pd.drop(["num_class_x", "num_class_y", "p_type_y", "ID"], axis=1)
         check_pd_fix.to_csv("CsvFiles/Check.csv")
-        print(self.min_max)
+        print(check_pd_fix)
         columns = check_pd_fix.columns.tolist()
+        sys.stdout = open("CsvFiles/log.txt", "w")
         for index, row in check_pd_fix.iterrows():
             lst = row.tolist()
+            print("-------------------------------------------")
             print(lst)
             for i in range(len(self.min_max) - 1):  # -1 so it won't run on the class
                 if lst[i] != 0:
@@ -80,6 +69,7 @@ class ResultsDPI:
                         print(f"Lower than {self.min_max[i][0]} in {columns[i]}")
                     elif lst[i] > self.min_max[i][1]:
                         print(f"Higher than {self.min_max[i][1]} in {columns[i]}")
+        sys.stdout.close()
 
     def initialize(self):
         self.stage2()
